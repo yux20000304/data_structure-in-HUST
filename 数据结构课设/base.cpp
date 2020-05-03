@@ -16,6 +16,9 @@ typedef struct varWatch
 {
 	struct varList *positive; //邻接表:正文字，负文字.
 	struct varList *negative;
+	int pos_num;
+	int neg_num;
+	int flag;
 } Var_watch,varWatch;
 
 typedef struct varList
@@ -60,7 +63,7 @@ clause *pan_duan(clause *S);
 int unique(clause *single,Var_watch *var_watch);
 int empty_set(clause *q);
 int empty_clause(clause *q);
-int stragety(clause *q);
+int stragety(Var_watch *var_watch);
 int reset(varWatch *var_watch,int temp);
 int delete_var(clause *pt,int temp);
 int search(Var_watch *var_watch,int temp);
@@ -69,6 +72,7 @@ int save_answer(int result, char *filename,int time);
 int SAT();
 int answer_test(clause *S,FILE *fp,varWatch *var_watch);
 int last_branch(varWatch *var_watch);
+
 
 
 char cnfpath[100];
@@ -88,11 +92,11 @@ int main() {
 	while (op) {
 		printf("\n\n");
 		printf("\t\t                     Menu \n");
-		printf("\t\t=====================================================\n");
-		printf("\t\t\t1.  Sudoku   2.  SAT    0.Exit\n");
-		printf("\t\t=====================================================\n");
+		printf("\t=====================================================\n");
+		printf("\t\t1.  Sudoku   2.  SAT    0.Exit\n");
+		printf("\t=====================================================\n");
 		printf("\t\t        CS1806 YYX U201814655\n\n\n");
-		printf("\t\t\t Choose your operation[0~2]: ");
+		printf("\t\t Choose your operation[0~2]: ");
 		scanf("%d", &op);
 		system("cls");
 		switch (op) {
@@ -112,6 +116,8 @@ int main() {
 	return 0;
 }
 
+
+
 int SAT()
 {
     clause *S = NULL;                   //分配一个字句指针
@@ -124,11 +130,11 @@ int SAT()
     while (op)
     {
         printf("\n\n");
-        printf("\t\t                                SAT Menu\n");
-        printf("\t\t======================================================================================\n");
-        printf("\t\t\t1.         New SAT   2.  Answer Test  0.  Main menu\n");
-        printf("\t\t======================================================================================\n");
-        printf("\t\t\t     Choose your operation[0~2]:   ");
+        printf("\t                                SAT Menu\n");
+        printf("=====================================================================\n");
+        printf("\t1.         New SAT   2.  Answer Test  0.  Main menu\n");
+        printf("=====================================================================\n");
+        printf("\t\t     Choose your operation[0~2]:   ");
         scanf("%d", &op);
         system("cls");
         switch (op)
@@ -195,6 +201,9 @@ int SAT()
     return 0;
 }
 
+
+
+
 int InitSat(clause **S, Var_watch var_watch[])
 {
     clause *cfront = *S, *crear;   //头尾子句指针
@@ -216,10 +225,13 @@ int InitSat(clause **S, Var_watch var_watch[])
     *S = NULL;          //把字句指针赋值为NULL
     number_var = 0;     //把变元数目赋值为0
     clause_num = 0;     //把已知变元数目赋值为0
-    for (i = 1; i < MaxNumVar; ++i)
+    for (i = 1; i < MaxNumVar; i++)
     {
         var_watch[i].positive = NULL; //文字邻接表指针指向空
         var_watch[i].negative = NULL;
+        var_watch[i].pos_num=0;
+        var_watch[i].neg_num=0;
+        var_watch[i].flag=0;
         answer[i] = 0;
     }
     top = stack_answer;
@@ -326,18 +338,24 @@ int GetNum(FILE *fp)
 int Putclause(clause *ctemp, int var, Var_watch var_watch[]) //ctemp为要记录的子句地址
 {
     Var_List *p, *q;                  //varlist指针
-    if (var > 0)                      //如果该变元大于0
+    if (var > 0) {                     //如果该变元大于0
         p = var_watch[var].positive;  //p指针为该变元所在位置的第一个正文字
-    else                              //如果该变元小于0
+        var_watch[var].pos_num++;
+    }
+    else{                              //如果该变元小于0
         p = var_watch[-var].negative; //p指针为该变元所在位置的第一个负文字
+         var_watch[-var].neg_num++;
+    }
     if (p == NULL)
     { //如果p是链表的第一个
         p = (VarList *)malloc(sizeof(VarList));
         p->p = ctemp; //将需要储存的子句地址存储下来
-        if (var > 0)
+        if (var > 0){
             var_watch[var].positive = p;
-        else
+        }
+        else{
             var_watch[-var].negative = p;
+        }
     }
     else
     { //p不是链表的第一个
@@ -381,7 +399,7 @@ int DPLL(clause *S, Var_watch *var_watch)
         return TRUE;
     else if (!empty_clause(S))
         return FALSE;
-    response = stragety(S);
+    response = stragety(var_watch);
     *top = response;
     top++;
     *first = response;
@@ -468,6 +486,7 @@ int unique(clause *single, Var_watch *var_watch)
             q = q->next;
         }
     }
+    var_watch[abs(temp)].flag=1;
     return OK;
 }
 
@@ -494,17 +513,28 @@ int empty_clause(clause *q)
     return TRUE;
 }
 
-int stragety(clause *q)
+int stragety(Var_watch *var_watch)
 {
-    while (q)
-    {
-        if (q->flag != 1)
-        {
-            return q->p->data;
+    int i=1;
+    int max_num=0;
+    int choose_num=0;
+    for(i=1;i<=number_var;i++){
+        if(var_watch[i].flag==1){
+
+            continue;
         }
-        q = q->nextclause;
+        else{
+            if(var_watch[i].pos_num>max_num){
+                max_num=var_watch[i].pos_num;
+                choose_num=i;
+            }
+            if(var_watch[i].neg_num>max_num){
+                max_num=var_watch[i].neg_num;
+                choose_num=-i;
+            }
+        }
     }
-    return OK;
+    return choose_num;
 }
 
 int reset(varWatch *var_watch, int temp)
@@ -562,6 +592,7 @@ int reset(varWatch *var_watch, int temp)
             q = q->next;
         }
     }
+    var_watch[abs(temp)].flag=0;
     return OK;
 }
 
@@ -633,6 +664,7 @@ int search(Var_watch *var_watch, int temp)
             q = q->next;
         }
     }
+    var_watch[abs(temp)].flag=1;
     return OK;
 }
 
@@ -754,12 +786,10 @@ int answer_test(clause *S, FILE *fp, varWatch *var_watch)
     return empty_set(S);
 }
 
-
-
 status Sudoku(){
 	int level,temp,i,j,k;
-	clause *S = NULL;                   
-    Var_watch var_watch[MaxNumVar + 1]; 
+	clause *S = NULL;
+    Var_watch var_watch[MaxNumVar + 1];
     FILE *fp;
     srand((unsigned)time(NULL));
 	printf("please input the level of the binary sudoku:\n");
@@ -785,7 +815,7 @@ status Sudoku(){
         bottom++;
     }
     for(i=1;i<=level*level;){
-        for(k = 0; k < level; k++)    
+        for(k = 0; k < level; k++)
 			printf("____");
        	printf("\n|");
     	for(j=1;j<=level;j++){
@@ -797,16 +827,16 @@ status Sudoku(){
 		}
     	printf("\n");
 	}
-	for(k = 0; k < level; k++)    
+	for(k = 0; k < level; k++)
 			printf("____");
 	printf("\n");
 	for(i=1;i<level*(level-2)+1;i++){
 		temp=rand()%(level*level)+1;
-		answer[temp]=0; 
+		answer[temp]=0;
 	}
 	printf("the sudoku is:\n");
 	for(i=1;i<=level*level;){
-        for(k = 0; k < level; k++)    
+        for(k = 0; k < level; k++)
 			printf("____");
        	printf("\n|");
     	for(j=1;j<=level;j++){
@@ -820,7 +850,7 @@ status Sudoku(){
 		}
     	printf("\n");
 	}
-	for(k = 0; k < level; k++)    
+	for(k = 0; k < level; k++)
 			printf("____");
 	printf("\n");
 	return 0;
@@ -975,7 +1005,7 @@ status Rule3(int level, FILE *fp)
                 fprintf(fp, "%d %d %d 0\n", literal_name - 1, literal_name - 2, -literal_name); //15711∨15710∨?1571
                 literal_name += 1;
             }
-            // 157= ?[1571∧1572∧…∧1578] 
+            // 157= ?[1571∧1572∧…∧1578]
             fprintf(fp, "%d ", -literal_name); //?157∨?1571∨?1572∨…∨?1578
             for (k = 1; k < level + 1; k++)
                 fprintf(fp, "%d ", -(literal_name + 2 - k * 3));
@@ -1017,5 +1047,3 @@ status Rule3(int level, FILE *fp)
     }
     return OK;
 }
-
-
